@@ -46,11 +46,23 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     add_definitions(-D_RELEASE=1)
 endif()
 
+# ASTD
+# -----------------------------------------------------------
+
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../ASTD [EXCLUDE_FROM_ALL])
+
+set(ASTD_SCRIPTS_PATH ${CMAKE_CURRENT_LIST_DIR}/../ASTD/Scripts/CMake)
+ASTD_file_public_directories(${ASTD_SCRIPTS_PATH} ASTD_DIRECTORIES)
+ASTD_file_private_files(${ASTD_SCRIPTS_PATH} ASTD_SOURCES)
+
 # Project Files
 # -----------------------------------------------------------
 
 include_directories(
+    "${ASTD_DIRECTORIES}"
+
     "${CMAKE_CURRENT_LIST_DIR}/${PROJECT_NAME}/Source/Public"
+    "${CMAKE_CURRENT_LIST_DIR}/${PROJECT_NAME}/Source/Public/Types"
 )
 
 # Sources
@@ -61,4 +73,5 @@ file(GLOB_RECURSE "PROJECT_SOURCES"
 # Executable and linking
 # -----------------------------------------------------------
 
-add_executable(${PROJECT_NAME} "${PROJECT_SOURCES}")
+add_executable(${PROJECT_NAME} "${ASTD_SOURCES}" "${PROJECT_SOURCES}")
+target_link_libraries(${PROJECT_NAME} ASTD)
