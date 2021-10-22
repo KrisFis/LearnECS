@@ -12,14 +12,14 @@ private: // Typedefs
 
 public: // Constructors
 
-	explicit FECSEntity(TEntityId InId)
+	inline explicit FECSEntity(TEntityId InId)
 		: Id(InId)
 		, Flags()
 	{}
 
 public: // Getters
 	
-	TEntityId GetId() const { return Id; }
+	inline TEntityId GetId() const { return Id; }
 	bool ContainsFlag(const TEntityFlag& Flag) const;
 	
 public: // Setters
@@ -38,14 +38,14 @@ public:
 		if(foundReg != LookupCache.end())
 			return false;
 		
-		uint8* elementAddress = nullptr;
-		constexpr uint64 elementBytes = sizeof(ComponentType);
+		std::uint8_t* elementAddress = nullptr;
+		constexpr std::size_t elementBytes = sizeof(ComponentType);
 
 		// Attempt to use old free memory
 		for(auto it = UnusedCache.begin(); it != UnusedCache.end(); ++it)
 		{
-			uint8* unusedAddress = it->first;
-			const uint64& unusedBytes = it->second;
+			std::uint8_t* unusedAddress = it->first;
+			const std::size_t& unusedBytes = it->second;
 		
 			if(unusedBytes >= elementBytes)
 			{
@@ -76,7 +76,7 @@ public:
 	}
 	
 	template<typename ComponentType>
-	FORCEINLINE bool ContainsComponent()
+	inline bool ContainsComponent()
 	{
 		return LookupCache.find(GetComponentInternalId<ComponentType>()) != LookupCache.end();
 	}
@@ -104,7 +104,7 @@ public:
 
 		((ComponentType*)foundReg->second)->~ComponentType();
 		
-		UnusedCache.insert({foundReg->second, (uint64)sizeof(ComponentType)});
+		UnusedCache.insert({foundReg->second, (std::size_t)sizeof(ComponentType)});
 		LookupCache.erase(foundReg);
 		return true;
 	}
@@ -122,14 +122,14 @@ private: // Internal methods
 private: // Fields
 
 	TEntityId Id;
-	TArray<TEntityFlag> Flags;
+	std::vector<TEntityFlag> Flags;
 
 	// Id, ptr to buffer
-	TFastMap<ComponentId, uint8*> LookupCache;
+	std::unordered_map<ComponentId, std::uint8_t*> LookupCache;
 	
 	// ptr to buffer, size of free bytes
-	TFastMap<uint8*, uint64> UnusedCache;
+	std::unordered_map<std::uint8_t*, std::size_t> UnusedCache;
 	
 	// Buffer containing all components
-	TArray<uint8> Buffer;
+	std::vector<std::uint8_t> Buffer;
 };

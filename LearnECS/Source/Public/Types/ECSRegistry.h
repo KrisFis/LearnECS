@@ -31,5 +31,5 @@ public: // Remove
 
 private:
 
-	TFastMap<TEntityId, FECSEntity> Entities;
+	std::unordered_map<TEntityId, FECSEntity> Entities;
 };

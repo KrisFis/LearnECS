@@ -1,11 +1,15 @@
 
 #pragma once
 
-#include <ASTDCore.h>
+#include <string>
+#include <stdint.h>
+
+#include <unordered_map>
+#include <vector>
 
 // Typedefs
-typedef uint32 TEntityId;
-typedef FString TEntityFlag;
+typedef std::uint32_t TEntityId;
+typedef std::string TEntityFlag;
 
 // Forward declarations
 class FECSRegistry;

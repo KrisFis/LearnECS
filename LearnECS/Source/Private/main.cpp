@@ -2,6 +2,7 @@
 #include "ECS.h"
 
 #include <iostream>
+#include <assert.h>
 
 namespace NTest
 {
@@ -14,23 +15,23 @@ namespace NTest
 
 	struct FMyBasicComponent
 	{
-		uint8 A;
-		uint8 B;
+		std::uint8_t A;
+		std::uint8_t B;
 	};
 
 	struct FMyComponent
 	{
-		FORCEINLINE explicit FMyComponent(FString InStr)
+		inline explicit FMyComponent(const std::string& InStr)
 				: Str(InStr)
 		{}
 
-		FString Str;
+		std::string Str;
 	};
 
 	class FMyComplexComponent : public FMyComponent, public FMyBasicComponent
 	{
 	public:
-		FORCEINLINE explicit FMyComplexComponent(FString InStr, uint8 InA, const char* InMyTxt, uint8 InB = 5)
+		inline explicit FMyComplexComponent(const std::string& InStr, std::uint8_t InA, const char* InMyTxt, std::uint8_t InB = 5)
 				: FMyComponent(InStr), MyTxt(InMyTxt)
 		{
 			A = InA;
@@ -44,14 +45,14 @@ namespace NTest
 	{
 		FScene myScene;
 	
-		ENSURE_RET(myScene.Registry.GetOrAdd(2).AddComponent<FMyComplexComponent>("Hello World2", 8, "Hello3"), false);
+		if(!myScene.Registry.GetOrAdd(2).AddComponent<FMyComplexComponent>("Hello World2", 8, "Hello3")) return false;
 		
 		FMyComplexComponent& myComplexComponent = *myScene.Registry.Find(2)->FindComponent<FMyComplexComponent>();
 		myComplexComponent.MyTxt = "Yes";
 		
-		ENSURE_RET(myScene.Registry.Find(2)->RemoveComponent<FMyComplexComponent>(), false);
-		ENSURE_RET(myScene.Registry.Find(2)->AddComponent<FMyComponent>("Hello World2"), false);
-		ENSURE_RET(myScene.Registry.Find(2)->AddComponent<FMyBasicComponent>(), false);
+		if(!myScene.Registry.Find(2)->RemoveComponent<FMyComplexComponent>()) return false;
+		if(!myScene.Registry.Find(2)->AddComponent<FMyComponent>("Hello World2")) return false;
+		if(!myScene.Registry.Find(2)->AddComponent<FMyBasicComponent>()) return false;
 		
 		FMyComponent& myComponent = *myScene.Registry.Find(2)->FindComponent<FMyComponent>();
 		myComponent.Str = "Yes";
@@ -65,6 +66,11 @@ namespace NTest
 
 int main()
 {
-	ENSURE_RET(NTest::TestECS(), 1);
+	if(!NTest::TestECS())
+	{
+		assert(false);
+		return 1;
+	}
+	
 	return 0;
 }
