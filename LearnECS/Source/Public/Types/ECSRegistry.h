@@ -3,33 +3,27 @@
 
 #include "ECSTypes.h"
 
-class FEntityRegistry
+class FECSRegistry
 {
 
 public: // Constructors
 
-	FEntityRegistry() = default;
-	~FEntityRegistry() = default;
+	FECSRegistry() = default;
+	~FECSRegistry() = default;
 
 public: // Add
 
 	void Add(TEntityId Id);
-	FEntity& FindOrAdd(TEntityId Id);
+	FECSEntity& GetOrAdd(TEntityId Id);
 	
 public: // Contains
 
 	bool Contains(TEntityId Id) const;
 	
-public: // Find
-
-	FEntity* Find(TEntityId Id);
-	const FEntity* Find(TEntityId Id) const;
-
 public: // Get
-		// * Unsafe find
 
-	FORCEINLINE FEntity& Get(TEntityId Id) { return *Find(Id); }
-	FORCEINLINE const FEntity& Get(TEntityId Id) const { return *Find(Id); }
+	FECSEntity* Find(TEntityId Id);
+	const FECSEntity* Find(TEntityId Id) const;
 
 public: // Remove
 
@@ -37,5 +31,5 @@ public: // Remove
 
 private:
 
-	TFastMap<TEntityId, FEntity> Entities;
+	TFastMap<TEntityId, FECSEntity> Entities;
 };

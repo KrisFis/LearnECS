@@ -3,72 +3,90 @@
 
 #include "ECSTypes.h"
 
-// TODO(kristian.fisera): Find proper implementation without RTTI
-#define WITH_RTTI 1
-
-#if WITH_RTTI
-#include <typeinfo>
-#endif
-
-namespace NComponentsContainer
-{
-	template<typename ComponentType>
-	uint32 CalculateHash()
-	{
-		#if WITH_RTTI
-		return typeid(ComponentType).hash_code();
-		#else
-		return 0;
-		#endif
-	}
-}
-
-class FComponentsContainer
+class FECSEntity
 {
 
-public: // Constructor
+private: // Typedefs
 
-	FComponentsContainer() = default;
-	~FComponentsContainer() = default;
+	typedef void* ComponentId;
 
+public: // Constructors
+
+	explicit FECSEntity(TEntityId InId)
+		: Id(InId)
+		, Flags()
+	{}
+
+public: // Getters
+	
+	TEntityId GetId() const { return Id; }
+	bool ContainsFlag(const TEntityFlag& Flag) const;
+	
+public: // Setters
+
+	void AddFlag(const TEntityFlag& Flag);
+	void RemoveFlag(const TEntityFlag& Flag);
+	
 public:
 
-	template<typename ComponentType, typename ...ArgTypes>
-	bool Add(ArgTypes&&... Args)
+	template<typename ComponentType, typename... ArgTypes>
+	bool AddComponent(ArgTypes&&... Args)
 	{
-		uint32 componentHashCode = NComponentsContainer::CalculateHash<ComponentType>();
+		const ComponentId componentId = GetComponentInternalId<ComponentType>();
 	
-		auto foundReg = LookupCache.find(componentHashCode);
-		if(foundReg == LookupCache.end())
+		auto foundReg = LookupCache.find(componentId);
+		if(foundReg != LookupCache.end())
+			return false;
+		
+		uint8* elementAddress = nullptr;
+		constexpr uint64 elementBytes = sizeof(ComponentType);
+
+		// Attempt to use old free memory
+		for(auto it = UnusedCache.begin(); it != UnusedCache.end(); ++it)
 		{
-			std::uint8_t* elementP = &(*Buffer.end());
-			Buffer.insert(Buffer.end(), sizeof(ComponentType), 0);
-			((ComponentType*)elementP)->ComponentType(std::forward<ArgTypes>(Args)...);
+			uint8* unusedAddress = it->first;
+			const uint64& unusedBytes = it->second;
+		
+			if(unusedBytes >= elementBytes)
+			{
+				elementAddress = unusedAddress;
 			
-			LookupCache.insert({componentHashCode, elementP});
-			return true;
+				// Remove or partially un-mark unused memory size
+				if(unusedBytes > elementBytes) 
+				{
+					// element address is 1 byte pointer, so counting by bytes
+					UnusedCache.insert({elementAddress + elementBytes, unusedBytes - elementBytes});
+				}
+				
+				UnusedCache.erase(it);
+				break; // break after first found memory
+			}
 		}
-		else if(!foundReg->second)
+		
+		// Reserve and use new buffer size if needed
+		if(!elementAddress)
 		{
-			std::uint8_t* elementP = foundReg->second;
-			((ComponentType*)elementP)->ComponentType(std::forward<ArgTypes>(Args)...); // overwrite with new
+			elementAddress = (&*Buffer.insert(Buffer.end(), elementBytes, 0));
 		}
 		
-		return false;
-	}
-	
-	template<typename ComponentType>
-	bool Contains()
-	{
-		return LookupCache.find(NComponentsContainer::CalculateHash<ComponentType>()) != LookupCache.end();
-	}
-	
-	template<typename ComponentType>
-	ComponentType* Get()
-	{
-		uint32 componentHashCode = NComponentsContainer::CalculateHash<ComponentType>();
+		new(elementAddress) ComponentType(std::forward<ArgTypes>(Args)...);
+		LookupCache.insert({componentId, elementAddress});
 		
-		auto foundReg = LookupCache.find(componentHashCode);
+		return true;
+	}
+	
+	template<typename ComponentType>
+	FORCEINLINE bool ContainsComponent()
+	{
+		return LookupCache.find(GetComponentInternalId<ComponentType>()) != LookupCache.end();
+	}
+	
+	template<typename ComponentType>
+	ComponentType* FindComponent()
+	{
+		const ComponentId componentId = GetComponentInternalId<ComponentType>();
+		
+		auto foundReg = LookupCache.find(componentId);
 		if(foundReg == LookupCache.end())
 			return nullptr;
 		
@@ -76,64 +94,42 @@ public:
 	}
 	
 	template<typename ComponentType>
-	bool Remove()
+	bool RemoveComponent()
 	{
-		uint32 componentHashCode = NComponentsContainer::CalculateHash<ComponentType>();
+		const ComponentId componentId = GetComponentInternalId<ComponentType>();
 		
-		auto foundReg = LookupCache.find(componentHashCode);
+		auto foundReg = LookupCache.find(componentId);
 		if(foundReg == LookupCache.end())
 			return false;
 
-		// Once component has been added, it has still reserved memory
-		//* This memory is just reused
-		(ComponentType*)(foundReg->second)->~ComponentType();
-		foundReg->second = nullptr;
+		((ComponentType*)foundReg->second)->~ComponentType();
+		
+		UnusedCache.insert({foundReg->second, (uint64)sizeof(ComponentType)});
 		LookupCache.erase(foundReg);
+		return true;
 	}
 
+private: // Internal methods
+
+	template<typename ComponentType>
+	ComponentId GetComponentInternalId()
+	{
+		// Works only inside same module
+		static ComponentType* uniqueId = nullptr;
+		return &uniqueId;
+	}
 
 private: // Fields
 
-	// Hash, ptr to buffer
-	TFastMap<uint32, uint8*> LookupCache;
+	TEntityId Id;
+	TArray<TEntityFlag> Flags;
+
+	// Id, ptr to buffer
+	TFastMap<ComponentId, uint8*> LookupCache;
+	
+	// ptr to buffer, size of free bytes
+	TFastMap<uint8*, uint64> UnusedCache;
 	
 	// Buffer containing all components
 	TArray<uint8> Buffer;
-};
-
-class FEntity
-{
-	
-public: // Constructors
-
-	FORCEINLINE explicit FEntity(TEntityId InId)
-		: Id(InId)
-		, Flags()
-		, Container()
-	{}
-
-public: // Operators
-
-	FComponentsContainer& operator->() { return GetComponents(); }
-	const FComponentsContainer& operator->() const { return GetComponents(); }
-
-public: // Getters
-	
-	FORCEINLINE TEntityId GetId() const { return Id; }
-	bool ContainsFlag(const TEntityFlag& Flag) const;
-	
-	FORCEINLINE FComponentsContainer& GetComponents() { return Container; }
-	FORCEINLINE const FComponentsContainer& GetComponents() const { return Container; }
-	
-public: // Setters
-
-	void AddFlag(const TEntityFlag& Flag);
-	void RemoveFlag(const TEntityFlag& Flag);
-	
-private:
-
-	TEntityId Id;
-	TArray<TEntityFlag> Flags;
-	
-	FComponentsContainer Container;
 };

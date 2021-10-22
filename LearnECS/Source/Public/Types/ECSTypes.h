@@ -8,5 +8,5 @@ typedef uint32 TEntityId;
 typedef FString TEntityFlag;
 
 // Forward declarations
-class FEntityRegistry;
-class FEntity;
+class FECSRegistry;
+class FECSEntity;

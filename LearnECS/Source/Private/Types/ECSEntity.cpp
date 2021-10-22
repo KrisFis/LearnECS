@@ -1,12 +1,12 @@
 
 #include "ECSEntity.h"
 
-bool FEntity::ContainsFlag(const TEntityFlag& Flag) const
+bool FECSEntity::ContainsFlag(const TEntityFlag& Flag) const
 {
 	return std::find(Flags.begin(), Flags.end(), Flag) != Flags.end();
 }
 
-void FEntity::AddFlag(const TEntityFlag& Flag)
+void FECSEntity::AddFlag(const TEntityFlag& Flag)
 {
 	auto foundFlag = std::find(Flags.begin(), Flags.end(), Flag);
 	if(foundFlag == Flags.end())
@@ -15,7 +15,7 @@ void FEntity::AddFlag(const TEntityFlag& Flag)
 	Flags.push_back(Flag);
 }
 
-void FEntity::RemoveFlag(const TEntityFlag& Flag)
+void FECSEntity::RemoveFlag(const TEntityFlag& Flag)
 {
 	auto foundFlag = std::find(Flags.begin(), Flags.end(), Flag);
 	if(foundFlag == Flags.end())
